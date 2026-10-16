@@ -10,9 +10,12 @@ import {
   isMachOFormat,
   isElfMetadataArchitecture,
   type BinaryTarget,
-  type ElfMetadataArchitecture,
   type HeaderArchitecture,
 } from "../domain/binaryTargetTypes.js";
+import {
+  declinedFamilyDescription,
+  declinedFamilyReason,
+} from "../domain/declinedFamily.js";
 import {
   AnalysisCancelledError,
   AnalysisCapabilityUnavailableError,
@@ -104,16 +107,6 @@ export const resolveHopperAnalysisProfile = async (
   });
 };
 
-/** Ghidra owns these lanes; Hopper names the family it declines rather than guessing. */
-const HOPPER_DECLINED_ARCHITECTURE_LABELS: Record<
-  ElfMetadataArchitecture,
-  string
-> = {
-  mips: "MIPS",
-  riscv: "RISC-V",
-  powerpc: "PowerPC",
-};
-
 /** Derive Hopper's complete non-interactive CLI loader selection. */
 export const hopperLoaderArgsForTarget = (
   target: BinaryTarget,
@@ -128,14 +121,20 @@ export const hopperLoaderArgsForTarget = (
   if (target.format === "raw-binary")
     return err(new ProviderAdapterError("hopper", "resolve_analysis_profile"));
   const architecture = target.architecture;
-  if (isElfMetadataArchitecture(architecture))
+  if (isElfMetadataArchitecture(architecture)) {
+    // Ghidra owns these lanes; Hopper names the family it declines.
+    const declined = declinedFamilyDescription(target);
     return err(
       new AnalysisCapabilityUnavailableError(
         "hopper",
         "resolve_analysis_profile",
-        `REA's Hopper adapter does not admit ${HOPPER_DECLINED_ARCHITECTURE_LABELS[architecture]} targets. Select a verified Ghidra ${HOPPER_DECLINED_ARCHITECTURE_LABELS[architecture]} profile instead.`,
+        declinedFamilyReason(
+          `REA's Hopper adapter does not admit ${declined.label} targets. Select a verified Ghidra ${declined.label} profile instead.`,
+          declined,
+        ),
       ),
     );
+  }
   const flag = hopperArchitectureFlag(architecture);
   if (isMachOFormat(target.format)) {
     if (machoContainer === undefined)

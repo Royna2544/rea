@@ -541,6 +541,7 @@ const readExecutableMetadata = async (
   const parsed = parseExecutableHeader(bytes, hostArchitecture, fileSize);
   if (
     !parsed.ok ||
+    parsed.value.format !== "elf" ||
     parsed.value.architecture !== "mips" ||
     parsed.value.mips.elfClass !== 32
   )

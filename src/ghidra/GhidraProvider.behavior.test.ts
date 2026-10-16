@@ -20,7 +20,10 @@ import {
 import { jsonValueSchema, type JsonValue } from "../domain/jsonValue.js";
 
 import { parseConfig } from "../config/parseConfig.js";
-import type { BinaryTarget } from "../domain/binaryTargetTypes.js";
+import type {
+  BinaryTarget,
+  HeaderArchitecture,
+} from "../domain/binaryTargetTypes.js";
 import { parseExecutableHeader } from "../domain/binaryTarget.js";
 import { GhidraProvider } from "./GhidraProvider.js";
 import type { GhidraTargetSnapshot } from "./GhidraClient.js";
@@ -2101,7 +2104,7 @@ describe("Ghidra PDB coverage", () => {
 
 const executableTarget = (
   format: "mach-o" | "elf" | "pe",
-  architecture: Extract<BinaryTarget, { format: "pe" }>["architecture"],
+  architecture: HeaderArchitecture,
 ): BinaryTarget =>
   format === "pe"
     ? peTarget(architecture)
@@ -2115,7 +2118,7 @@ const executableTarget = (
       };
 
 const peTarget = (
-  architecture: Extract<BinaryTarget, { format: "pe" }>["architecture"],
+  architecture: HeaderArchitecture,
 ): Extract<BinaryTarget, { format: "pe" }> => ({
   path: "/tmp/fixture",
   sha256: "a".repeat(64),

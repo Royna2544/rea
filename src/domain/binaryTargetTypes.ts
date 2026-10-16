@@ -33,7 +33,11 @@ export interface PeCodeViewRecord {
   readonly age: number;
 }
 
-/** Families whose parsed target variant carries `ElfFamilyMetadata`. */
+/**
+ * Families whose parsed ELF target variant carries `ElfFamilyMetadata`. A PE
+ * image may also declare one of these families through its COFF machine; that
+ * variant carries no ELF metadata and keeps the raw machine instead.
+ */
 export const ELF_METADATA_ARCHITECTURES = [
   "mips",
   "riscv",
@@ -53,6 +57,12 @@ export type HeaderArchitecture = Exclude<
   BinaryArchitecture,
   ElfMetadataArchitecture | "6502"
 >;
+
+/**
+ * Families a PE COFF machine can declare. The family is the header fact; the
+ * ISA revision, ABI and OS profile are not, and stay with the raw `peMachine`.
+ */
+export type PeArchitecture = HeaderArchitecture | "mips";
 
 /** Raw ELF facts; family recognition does not establish ISA or ABI support. */
 export interface MipsElfMetadata extends ElfFamilyMetadata {
@@ -193,8 +203,13 @@ export type BinaryTarget =
       readonly executableRole?: never;
       readonly managed?: never;
     })
-  | (ExecutableTarget & {
+  | (BinaryTargetIdentity & {
+      readonly kind: "executable";
       readonly format: "pe";
+      readonly architecture: PeArchitecture;
+      readonly availableArchitectures: readonly PeArchitecture[];
+      /** A PE declares its family through the COFF machine, never ELF metadata. */
+      readonly mips?: never;
       /** Original COFF machine; undefined means this header fact is unavailable. */
       readonly peMachine?: number;
       /** Provider-neutral PE image role observed from COFF characteristics. */

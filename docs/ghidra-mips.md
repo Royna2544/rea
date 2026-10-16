@@ -10,8 +10,9 @@ PSP/Allegrex has a [separate static-ELF profile](ghidra-psp.md) tracked in
 
 ELF `EM_MIPS` is retained as the provider-neutral `mips` family. The target also
 retains class, byte order, `e_type`, raw `e_flags`, and inspected ABI declarations.
-Recognition does not mean every provider or MIPS variant is supported. Existing
-PE, managed and Mach-O architecture sets are unchanged.
+Recognition does not mean every provider or MIPS variant is supported. This lane
+reads ELF declarations only; PE images that declare a MIPS COFF machine use the
+[separate MIPS PE lane](ghidra-mips-pe.md).
 
 The Ghidra lane admits ELF32 `ET_EXEC` and `ET_REL`, little or big endian, with
 explicit o32 and `EF_MIPS_ARCH_32R2` flags and no machine-specific or ASE

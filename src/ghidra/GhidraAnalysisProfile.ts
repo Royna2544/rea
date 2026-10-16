@@ -19,6 +19,11 @@ import {
   ghidraMipsLanguageOverride,
 } from "./GhidraMipsProfile.js";
 import {
+  ghidraMipsPeLanguage,
+  ghidraMipsPeProfileParameters,
+  isGhidraMipsPeTarget,
+} from "./GhidraMipsPeProfile.js";
+import {
   ghidraRiscvLanguageOverride,
   ghidraRiscvProfileParameters,
 } from "./GhidraRiscvProfile.js";
@@ -55,6 +60,7 @@ export const ghidraPinnedLanguage = (
   target: BinaryTarget,
 ): GhidraLanguageOverride | undefined =>
   ghidraMipsLanguageOverride(target) ??
+  ghidraMipsPeLanguage(target) ??
   ghidraRiscvLanguageOverride(target) ??
   ghidraPowerPcLanguage(target);
 
@@ -185,7 +191,9 @@ export const resolveGhidraAnalysisProfile = async (
         `The caller-selected processor or compiler specification is outside the verified ${
           target.architecture === "riscv"
             ? "generic little-endian RISC-V"
-            : "endian-matched MIPS32"
+            : isGhidraMipsPeTarget(target)
+              ? "little-endian MIPS32 Windows PE"
+              : "endian-matched MIPS32"
         } profile. The requested override has not been changed.`,
       ),
     );
@@ -306,6 +314,7 @@ export const resolveGhidraAnalysisProfile = async (
           : {}),
         ...analyzerParameters,
         ...ghidraMipsProfileParameters(target, languageOverride),
+        ...ghidraMipsPeProfileParameters(target),
         ...ghidraRiscvProfileParameters(target),
         ...ghidraPowerPcProfileParameters(target),
         ...(pspExtension?.ok === true

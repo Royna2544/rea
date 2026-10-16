@@ -37,7 +37,7 @@ PowerPC header facts are committed in the analysis profile so interpretation
 changes invalidate profile-bound snapshots. The support-lane identity is
 versioned independently of file identity. Evidence, lifecycle outputs and saved
 snapshots preserve the `powerpc` family. Hopper and IDA adapters do not
-implicitly gain PowerPC support. Windows Ghidra P0 remains PE x86/x86-64 only.
+implicitly gain PowerPC support. Windows Ghidra P0 admits native x86, x86-64, ARMNT and ARM64 PE targets only.
 
 ## Use
 

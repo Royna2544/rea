@@ -138,6 +138,13 @@ const architectureFor = (
       "pe.machine",
       `Unsupported PE machine 0x${machine.toString(16).padStart(4, "0")}`,
     );
+  // Managed output contracts enumerate x86, x86-64, ARM and ARM64 only.
+  if (decoded.architecture === "mips")
+    throw managedFailure(
+      "invalid-directory",
+      "pe.machine",
+      `Managed inspection does not admit the MIPS PE machine 0x${machine.toString(16).padStart(4, "0")}`,
+    );
   return decoded.architecture;
 };
 

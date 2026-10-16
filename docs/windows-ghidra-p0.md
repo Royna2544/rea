@@ -140,7 +140,8 @@ architectures, managed images, and malformed headers. The original selected
 source coordinate is preserved for native admission. The original COFF machine is
 retained separately from the normalized CPU family. ARM admission requires the
 observed ARMNT machine 0x01C4; ARM64 requires 0xAA64. Legacy ARM (0x01C0), Thumb
-(0x01C2), and unavailable machine facts do not select this Windows lane.
+(0x01C2), MIPS machines such as 0x0166 (a [Linux/macOS lane](ghidra-mips-pe.md)),
+and unavailable machine facts do not select this Windows lane.
 Without a caller-selected processor override, Ghidra's PE loader
 selects the language from the PE machine field: ARM (`IMAGE_FILE_MACHINE_ARMNT`)
 imports as `ARM:LE:32:v8` (Thumb), ARM64 (`IMAGE_FILE_MACHINE_ARM64`) as

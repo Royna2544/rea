@@ -14,6 +14,7 @@ const MIPS16_HEADER_ASE = 0x04000000;
 /** A distinct compressed shared-image shape; admission still checks every declaration. */
 const isGhidraMips16SharedTarget = (target: BinaryTarget): boolean =>
   target.kind === "executable" &&
+  target.format === "elf" &&
   target.architecture === "mips" &&
   target.mips.type === MIPS_ET_DYN &&
   (target.mips.flags & 0x0f000000) === MIPS16_HEADER_ASE;
@@ -22,9 +23,11 @@ const isGhidraMips16SharedTarget = (target: BinaryTarget): boolean =>
 export const ghidraMipsLanguageOverride = (
   target: BinaryTarget,
 ): GhidraLanguageOverride | undefined =>
+  target.kind === "executable" &&
+  target.format === "elf" &&
+  target.architecture === "mips" &&
   (isGhidraMips16SharedTarget(target) || hasLegacyMipsHeaderShape(target)) &&
-  ghidraMipsUnsupportedReason(target) === null &&
-  target.architecture === "mips"
+  ghidraMipsUnsupportedReason(target) === null
     ? {
         languageId: `MIPS:${target.mips.byteOrder === "little" ? "LE" : "BE"}:32:default`,
         compilerSpecId: "default",
@@ -274,7 +277,10 @@ export const ghidraMipsRelocatableLimitations = (
 export const ghidraMipsSharedLimitations = (
   target: BinaryTarget,
 ): readonly string[] =>
-  isGhidraMips16SharedTarget(target) && target.architecture === "mips"
+  target.kind === "executable" &&
+  target.format === "elf" &&
+  target.architecture === "mips" &&
+  isGhidraMips16SharedTarget(target)
     ? [
         "MIPS16 shared ELF: the endian-matched generic MIPS32 language uses the provider's per-address ISA_MODE context. The program language variant is not the instruction's encoding mode.",
         "Shared-image addresses are Ghidra analysis coordinates, not runtime addresses. The source bytes remain unchanged; inspect_native_load_image retains original relocation bytes, loaded memory bytes and provider relocation status. External GOT bindings remain unverified without their defining images.",

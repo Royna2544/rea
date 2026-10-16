@@ -11,6 +11,14 @@ binaries and Ghidra projects are never committed.
   RISC-V Clang/LLD/LLVM readelf; `REA_RISCV_CLANG`, `REA_RISCV_LLD` and
   `REA_RISCV_READELF` select existing tool commands.
 
+- `mips-pe-fixture.mjs` encodes a MIPS R4000 PE32 (COFF machine `0x0166`,
+  subsystem 9) instruction by instruction, with no compiler or binary seed.
+  `npm run verify:ghidra:mips-pe` exercises real CLI/MCP discovery, the pinned
+  language and lane identity, hashes of the loaded mappings, delay-slot
+  decoding, the direct call, a DLL variant, the documented MIPS III limitation,
+  refusals of an unverified machine and a conflicting override, immutable
+  source bytes, and owned cleanup. It requires BYO Ghidra 12.1.4/JDK 21+.
+
 - `inventory.c` produces separate x86-64 debug and stripped ELF executables.
   It covers imports, an external `puts` function, linker thunks, source symbols,
   direct calls, a targetless callback call, two referenced strings, and a

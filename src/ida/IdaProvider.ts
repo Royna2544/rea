@@ -5,6 +5,10 @@ import {
   isElfMetadataArchitecture,
   type BinaryTarget,
 } from "../domain/binaryTargetTypes.js";
+import {
+  declinedFamilyDescription,
+  declinedFamilyReason,
+} from "../domain/declinedFamily.js";
 import { err, ok } from "../domain/result.js";
 import { AnalysisCancelledError } from "../domain/analysisErrorCore.js";
 import type {
@@ -112,19 +116,18 @@ export class IdaProvider implements AnalysisProviderCandidate {
     if (
       target.kind === "executable" &&
       isElfMetadataArchitecture(target.architecture)
-    )
+    ) {
+      const declined = declinedFamilyDescription(target);
       return {
         status: "unsupported",
         code: "architecture_unsupported",
-        reason: `REA's IDA adapter has no verified ${
-          target.architecture === "mips"
-            ? "MIPS"
-            : target.architecture === "riscv"
-              ? "RISC-V"
-              : "PowerPC"
-        } lane. Select a supported Ghidra profile instead.`,
+        reason: declinedFamilyReason(
+          `REA's IDA adapter has no verified ${declined.label} lane. Select a supported Ghidra profile instead.`,
+          declined,
+        ),
         diagnostics,
       };
+    }
     if (target.kind !== "executable")
       return {
         status: "unsupported",

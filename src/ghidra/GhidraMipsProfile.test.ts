@@ -58,7 +58,11 @@ const abi = (
   change: Partial<NonNullable<MipsElfMetadata["abiFlags"]>>,
 ): Partial<MipsElfMetadata> => {
   const base = target();
-  if (base.kind !== "executable" || base.architecture !== "mips")
+  if (
+    base.kind !== "executable" ||
+    base.format !== "elf" ||
+    base.architecture !== "mips"
+  )
     throw new Error("expected a MIPS fixture target");
   const flags = base.mips.abiFlags;
   if (flags === undefined || flags === null)
@@ -476,7 +480,11 @@ describe("MIPS16 shared-image profile", () => {
     "refuses an uninspected %s declaration",
     (declaration) => {
       const value = shared();
-      if (value.kind !== "executable" || value.architecture !== "mips")
+      if (
+        value.kind !== "executable" ||
+        value.format !== "elf" ||
+        value.architecture !== "mips"
+      )
         throw new Error("expected MIPS target");
       const facts = { ...value.mips };
       delete facts[declaration];

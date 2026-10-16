@@ -4,6 +4,10 @@ import {
   ghidraMipsIncompleteDeclarationsReason,
   ghidraMipsUnsupportedReason,
 } from "./GhidraMipsProfile.js";
+import {
+  ghidraMipsPeUnsupportedReason,
+  isGhidraMipsPeTarget,
+} from "./GhidraMipsPeProfile.js";
 import { ghidraPowerPcUnsupportedReason } from "./GhidraPowerPcProfile.js";
 import { ghidraRiscvUnsupportedReason } from "./GhidraRiscvProfile.js";
 
@@ -23,6 +27,8 @@ export const ghidraProcessorUnsupportedReason = (
     return ghidraPowerPcUnsupportedReason(target);
   if (target.kind === "executable" && target.architecture === "riscv")
     return ghidraRiscvUnsupportedReason(target);
+  if (isGhidraMipsPeTarget(target))
+    return ghidraMipsPeUnsupportedReason(target);
   if (
     target.kind !== "executable" ||
     target.architecture !== "mips" ||

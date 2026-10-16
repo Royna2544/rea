@@ -20,6 +20,10 @@ import {
   isElfMetadataArchitecture,
   type BinaryTarget,
 } from "../domain/binaryTargetTypes.js";
+import {
+  declinedFamilyDescription,
+  declinedFamilyReason,
+} from "../domain/declinedFamily.js";
 import type { JsonValue } from "../domain/jsonValue.js";
 import type { Logger } from "pino";
 import { AnalysisCapabilityUnavailableError } from "../domain/analysisErrorCore.js";
@@ -129,19 +133,18 @@ export class HopperProvider implements AnalysisProviderCandidate {
         reason: null,
         diagnostics,
       };
-    if (isElfMetadataArchitecture(target.architecture))
+    if (isElfMetadataArchitecture(target.architecture)) {
+      const declined = declinedFamilyDescription(target);
       return {
         status: "unsupported",
         code: "architecture_unsupported",
-        reason: `REA's Hopper adapter does not admit ${
-          target.architecture === "mips"
-            ? "MIPS"
-            : target.architecture === "riscv"
-              ? "RISC-V"
-              : "PowerPC"
-        } targets.`,
+        reason: declinedFamilyReason(
+          `REA's Hopper adapter does not admit ${declined.label} targets.`,
+          declined,
+        ),
         diagnostics,
       };
+    }
     if (target.format === "raw-binary")
       return {
         status: "unsupported",

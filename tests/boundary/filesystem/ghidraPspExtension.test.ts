@@ -370,6 +370,7 @@ describe.skipIf(process.platform === "win32")(
       if (!parsed.ok) throw parsed.error;
       if (
         parsed.value.kind !== "executable" ||
+        parsed.value.format !== "elf" ||
         parsed.value.architecture !== "mips"
       )
         throw new Error("PSP ELF was not recognized as MIPS");
@@ -398,6 +399,7 @@ describe.skipIf(process.platform === "win32")(
       if (!parsed.ok) throw parsed.error;
       if (
         parsed.value.kind !== "executable" ||
+        parsed.value.format !== "elf" ||
         parsed.value.architecture !== "mips"
       )
         throw new Error("PSP ELF was not recognized as MIPS");

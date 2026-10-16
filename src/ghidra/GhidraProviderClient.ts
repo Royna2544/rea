@@ -73,6 +73,7 @@ import {
   ghidraMipsSoftFloatLimitations,
   isGhidraMipsSoftFloatTarget,
 } from "./GhidraMipsProfile.js";
+import { ghidraMipsPeLimitations } from "./GhidraMipsPeProfile.js";
 import { ghidraRiscvLimitations } from "./GhidraRiscvProfile.js";
 import { ghidraPePdbLimitations } from "./GhidraPeProfile.js";
 import { unverifiedGhidraBuildLimitation } from "./GhidraReleasePolicy.js";
@@ -552,7 +553,9 @@ export const createGhidraProviderClient = (input: {
           "Static analysis does not emulate reset vectors, memory-mapped I/O, or firmware boot sequences.",
         ]
       : []),
-    ...(target.kind === "executable" && target.architecture === "mips"
+    ...(target.kind === "executable" &&
+    target.format === "elf" &&
+    target.architecture === "mips"
       ? (target.mips.limitations ?? [])
       : []),
     ...(committedProfile.parameters.mips_abi_basis ===
@@ -564,6 +567,7 @@ export const createGhidraProviderClient = (input: {
       : []),
     ...ghidraMipsRelocatableLimitations(target),
     ...ghidraMipsSharedLimitations(target),
+    ...ghidraMipsPeLimitations(target),
     ...ghidraRiscvLimitations(target),
   ];
   const providerLimitations =

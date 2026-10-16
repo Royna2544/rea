@@ -10,8 +10,8 @@ lane shape as [generic MIPS support](ghidra-mips.md).
 ELF `EM_RISCV` (243) is retained as the provider-neutral `riscv` family. The
 target also retains the raw ELF declarations that decide a lane: class, byte
 order, `e_type`, and `e_flags`. Recognition does not mean every provider or
-RISC-V variant is supported. Existing PE, managed and Mach-O architecture sets
-are unchanged. Headerless inputs use the separate [raw-binary admission
+RISC-V variant is supported. This lane does not change the PE, managed or Mach-O
+architecture sets. Headerless inputs use the separate [raw-binary admission
 boundary](raw-binary.md); raw RISC-V images are not supported.
 
 The Ghidra lane admits little-endian ELF32 and ELF64 `ET_EXEC` images that

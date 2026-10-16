@@ -3,6 +3,7 @@ import type {
   ElfFamilyMetadata,
   HeaderArchitecture,
   MipsElfMetadata,
+  PeArchitecture,
   PeCodeViewRecord,
   RiscvElfMetadata,
   PowerPcElfMetadata,
@@ -53,8 +54,8 @@ export type ExecutableMetadata =
       readonly format: "pe";
       /** Original unsigned COFF machine, before CPU-family normalization. */
       readonly peMachine: number;
-      readonly architecture: HeaderArchitecture;
-      readonly availableArchitectures: readonly HeaderArchitecture[];
+      readonly architecture: PeArchitecture;
+      readonly availableArchitectures: readonly PeArchitecture[];
       readonly executableRole:
         | "application"
         | "shared-library"
@@ -500,14 +501,26 @@ export const parsePeCodeViewFromBuffer = (
   return undefined;
 };
 
+/** PE32+ (0x20b) for 64-bit machines, PE32 (0x10b) for 32-bit ones. */
+const peOptionalHeaderMagic = (architecture: PeArchitecture): 0x10b | 0x20b => {
+  switch (architecture) {
+    case "x86_64":
+    case "arm64":
+      return 0x20b;
+    case "x86":
+    case "arm":
+    case "mips":
+      return 0x10b;
+  }
+};
+
 const peManagedStatus = (
   optionalHeader: Buffer,
-  architecture: BinaryArchitecture,
+  architecture: PeArchitecture,
 ): Result<boolean, string> => {
   if (optionalHeader.length < 2) return err("truncated PE optional header");
   const magic = optionalHeader.readUInt16LE(0);
-  const expectedMagic =
-    architecture === "x86_64" || architecture === "arm64" ? 0x20b : 0x10b;
+  const expectedMagic = peOptionalHeaderMagic(architecture);
   if (magic !== expectedMagic)
     return err("PE optional-header magic does not match its architecture");
   const directoryOffset = magic === 0x20b ? 112 : 96;

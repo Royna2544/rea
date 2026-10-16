@@ -1,6 +1,10 @@
-import type { HeaderArchitecture } from "./binaryTargetTypes.js";
+import type {
+  HeaderArchitecture,
+  PeArchitecture,
+} from "./binaryTargetTypes.js";
 
-export type PeArchitecture = HeaderArchitecture;
+/** IMAGE_FILE_MACHINE_R4000: little-endian MIPS, the Windows CE MIPS machine. */
+export const PE_MACHINE_MIPS_R4000 = 0x0166;
 
 /** A decoded COFF machine and whether it carried a ReadyToRun OS override. */
 export interface PeMachine {
@@ -8,9 +12,14 @@ export interface PeMachine {
   readonly nativeOsOverride: boolean;
 }
 
-const architectureForMachine = (
+/**
+ * Machines ReadyToRun can target. Only this table is retried under an OS
+ * override: ReadyToRun has no MIPS target, so XOR-ing an override into a MIPS
+ * machine must not decode as managed MIPS.
+ */
+const readyToRunArchitectureForMachine = (
   machine: number,
-): PeArchitecture | undefined => {
+): HeaderArchitecture | undefined => {
   switch (machine) {
     case 0x014c:
       return "x86";
@@ -25,6 +34,16 @@ const architectureForMachine = (
   }
   return undefined;
 };
+
+/**
+ * Every other COFF MIPS machine (R3000, R10000, WCE v2, MIPS16, FPU variants)
+ * stays undecoded: each selects a different ISA or word size, and none has
+ * been verified.
+ */
+const architectureForMachine = (machine: number): PeArchitecture | undefined =>
+  machine === PE_MACHINE_MIPS_R4000
+    ? "mips"
+    : readyToRunArchitectureForMachine(machine);
 
 /**
  * ReadyToRun images compiled for a non-Windows OS store the COFF machine XORed
@@ -42,7 +61,7 @@ export const decodePeMachine = (machine: number): PeMachine | undefined => {
   if (direct !== undefined)
     return { architecture: direct, nativeOsOverride: false };
   for (const override of NATIVE_OS_OVERRIDES) {
-    const architecture = architectureForMachine(machine ^ override);
+    const architecture = readyToRunArchitectureForMachine(machine ^ override);
     if (architecture !== undefined)
       return { architecture, nativeOsOverride: true };
   }
