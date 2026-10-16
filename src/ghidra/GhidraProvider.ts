@@ -47,6 +47,7 @@ import {
   ghidraProcessorUnsupportedReason,
   isGhidraPspTarget,
 } from "./GhidraPspProfile.js";
+import { ghidraMipsPeUnsupportedReason } from "./GhidraMipsPeProfile.js";
 import { resolveGhidraExtensions } from "./extensions/GhidraExtensions.js";
 import {
   CAPABILITIES,
@@ -366,7 +367,7 @@ const inspectWindowsP0TargetSupport = (
       status: "unsupported",
       code: "architecture_unsupported",
       reason:
-        "Windows Ghidra P0 accepts x86, x86-64, ARM and ARM64 PE targets only.",
+        "Windows Ghidra P0 accepts x86, x86-64, ARM, ARM64 and R4000 MIPS PE targets only.",
       diagnostics,
     };
   if (
@@ -397,6 +398,15 @@ const inspectWindowsP0TargetSupport = (
       code: "architecture_unsupported",
       reason:
         "Windows Ghidra P0 ARM PE targets require observed ARMNT (0x01c4) or ARM64 (0xaa64) COFF machines; legacy ARM/Thumb and unknown machines are unsupported.",
+      diagnostics: { ...diagnostics, pe_machine: target.peMachine ?? null },
+    };
+  // The MIPS PE lane owns its machine gate; Windows only adds its own boundary.
+  const mipsReason = ghidraMipsPeUnsupportedReason(target);
+  if (mipsReason !== null)
+    return {
+      status: "unsupported",
+      code: "architecture_unsupported",
+      reason: mipsReason,
       diagnostics: { ...diagnostics, pe_machine: target.peMachine ?? null },
     };
   return {

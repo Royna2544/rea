@@ -34,10 +34,12 @@ import {
 // seed and no tool acquisition. REA never executes the target.
 if (process.argv.length !== 2)
   throw new Error("Usage: node scripts/verify-real-ghidra-mips-pe.mjs");
-if (!["linux", "darwin"].includes(process.platform))
+if (!["linux", "darwin", "win32"].includes(process.platform))
   throw new Error(
-    "verify:ghidra:mips-pe supports Linux/macOS hosts only; Windows Ghidra P0 refuses MIPS PE.",
+    "verify:ghidra:mips-pe supports Linux, macOS and Windows x64 hosts only.",
   );
+if (process.platform === "win32" && process.arch !== "x64")
+  throw new Error("verify:ghidra:mips-pe requires a Windows x64 host.");
 if (process.env.GHIDRA_INSTALL_DIR === undefined)
   throw new Error(
     "verify:ghidra:mips-pe prerequisite missing: GHIDRA_INSTALL_DIR (bring your own Ghidra).",
@@ -59,9 +61,40 @@ const workspace = await mkdtemp(join(tmpdir(), "rea-mips-pe-proof-"));
 const runtime = join(workspace, "runtime");
 await mkdir(runtime);
 const entrypoint = fileURLToPath(new URL("./rea.mjs", import.meta.url));
+// Windows children need the system variables Node and the JVM resolve at start
+// (SystemRoot, TEMP, PATHEXT); everything else is left out.
+const WINDOWS_CHILD_VARIABLES = [
+  "SystemRoot",
+  "SystemDrive",
+  "windir",
+  "ComSpec",
+  "PATHEXT",
+  "USERPROFILE",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "ProgramData",
+  "ProgramFiles",
+  "USERNAME",
+  "USERDOMAIN",
+  "COMPUTERNAME",
+  "PROCESSOR_ARCHITECTURE",
+  "NUMBER_OF_PROCESSORS",
+  "OS",
+];
 const baseEnv = {
   PATH: process.env.PATH ?? "/usr/bin:/bin",
   TMPDIR: runtime,
+  ...(process.platform === "win32"
+    ? {
+        TEMP: runtime,
+        TMP: runtime,
+        ...Object.fromEntries(
+          WINDOWS_CHILD_VARIABLES.flatMap((name) =>
+            process.env[name] === undefined ? [] : [[name, process.env[name]]],
+          ),
+        ),
+      }
+    : {}),
   REA_LOG_LEVEL: "silent",
   REA_ANALYSIS_PROVIDER: "ghidra",
   REA_PROCESS_RUN_ID: run.run_id,
@@ -522,9 +555,17 @@ try {
 }
 assert.ok(report, "No MIPS PE proof report was produced");
 const verifierRun = await completeVerifierRun(run);
-assertVerifierCleanupComplete(verifierRun.process_lineage);
+// The verifier holds no Job Object lease on Windows, so its lineage observation
+// is unavailable there; the provider's native owners verify their own cleanup.
+const lineageVerified = verifierRun.process_lineage.status === "verified";
+if (process.platform !== "win32")
+  assertVerifierCleanupComplete(verifierRun.process_lineage);
 process.stdout.write(
-  `${JSON.stringify({ verifier_run: verifierRun, ...report, cleanup: "complete" })}\n`,
+  `${JSON.stringify({
+    verifier_run: verifierRun,
+    ...report,
+    cleanup: lineageVerified ? "complete" : "provider-owned",
+  })}\n`,
 );
 
 function assertProfile(profile, role) {

@@ -10,9 +10,12 @@ import { GHIDRA_FUNCTION_OPERATIONS } from "./GhidraFunctionValues.js";
 import { GHIDRA_INVENTORY_OPERATIONS } from "./GhidraInventoryValues.js";
 import { GHIDRA_MUTATING_OPERATIONS } from "./GhidraSessionValues.js";
 
-/** Target architectures admitted by the Windows P0 native PE boundary. */
+/**
+ * Target architectures admitted by the Windows P0 native PE boundary. `mips` is
+ * the family only: admission also requires the observed R4000 COFF machine.
+ */
 export const WINDOWS_P0_NATIVE_PE_ARCHITECTURES: readonly string[] =
-  Object.freeze(["x86", "x86_64", "arm", "arm64"]);
+  Object.freeze(["x86", "x86_64", "arm", "arm64", "mips"]);
 
 /** Public identity committed by every Ghidra-backed observation. */
 export const GHIDRA_PROVIDER_IDENTITY: ProviderIdentity = Object.freeze({

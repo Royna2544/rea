@@ -1,0 +1,110 @@
+name: Real Ghidra MIPS PE Windows
+
+# Manual proof of the Windows Ghidra P0 admission of MIPS R4000 PE images on a
+# GitHub-hosted Windows x64 runner. It downloads Ghidra, so it is never an
+# automatic gate. The `push` trigger exists only so a branch can be proven before
+# the workflow reaches the default branch, where workflow_dispatch becomes usable.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/cool-hopper-142bbh]
+    paths:
+      - ".github/workflows/real-ghidra-mips-pe-windows.yml"
+      - "scripts/verify-real-ghidra-mips-pe.mjs"
+      - "tests/conformance/ghidra/mips-pe-fixture.mjs"
+      - "src/ghidra/**"
+      - "src/domain/**"
+      - "src/application/**"
+
+concurrency:
+  group: real-ghidra-mips-pe-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HUSKY: "0"
+  GHIDRA_RELEASE_URL: https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip
+  # SHA-256 of the release archive as downloaded over TLS when this lane was
+  # written; it pins the bytes, it is not a publisher-signed checksum.
+  GHIDRA_RELEASE_SHA256: ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db
+
+permissions:
+  contents: read
+
+jobs:
+  native-artifact:
+    name: Build matching Windows native artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Prepare cross compiler
+        run: |
+          for source in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+            if [ -f "$source" ]; then
+              sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g; s|http://archive.ubuntu.com|https://archive.ubuntu.com|g' "$source"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y g++-mingw-w64-x86-64
+      - run: npm run build:windows-native
+      - run: npm run verify:windows-native:artifact
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: real-ghidra-mips-pe-windows-native
+          path: native/windows/build/
+          if-no-files-found: error
+
+  verify:
+    name: Real Ghidra 12.1.4 Windows x64 MIPS PE proof
+    needs: native-artifact
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: real-ghidra-mips-pe-windows-native
+          path: native/windows/build/
+      - run: npm run verify:windows-native:artifact
+      - name: Select the runner's JDK 21
+        shell: pwsh
+        run: |
+          $jdk = $env:JAVA_HOME_21_X64
+          if (-not $jdk -or -not (Test-Path (Join-Path $jdk 'bin\javac.exe'))) {
+            throw "The runner image has no full JDK 21 (JAVA_HOME_21_X64 = '$jdk')"
+          }
+          "JAVA_HOME=$jdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          & (Join-Path $jdk 'bin\java.exe') -version
+      - name: Install Ghidra 12.1.4 from the pinned release archive
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'ghidra.zip'
+          Invoke-WebRequest -Uri $env:GHIDRA_RELEASE_URL -OutFile $archive
+          $digest = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+          if ($digest -ne $env:GHIDRA_RELEASE_SHA256) {
+            throw "Ghidra archive digest $digest does not match the pinned $env:GHIDRA_RELEASE_SHA256"
+          }
+          $destination = Join-Path $env:RUNNER_TEMP 'ghidra'
+          Expand-Archive -Path $archive -DestinationPath $destination
+          $root = Join-Path $destination 'ghidra_12.1.4_PUBLIC'
+          Get-Content (Join-Path $root 'Ghidra\application.properties') | Select-String 'application.version'
+          "GHIDRA_INSTALL_DIR=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Verify the MIPS R4000 PE lane through the CLI and MCP
+        env:
+          REA_ANALYSIS_PROVIDER: ghidra
+        run: npm run verify:ghidra:mips-pe | Tee-Object -FilePath windows-mips-pe-proof.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: windows-mips-pe-proof
+          path: windows-mips-pe-proof.log
+          if-no-files-found: ignore
+          retention-days: 30

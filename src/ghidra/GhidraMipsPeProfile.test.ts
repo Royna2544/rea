@@ -289,23 +289,56 @@ describe("Ghidra MIPS PE host admission", () => {
     });
   });
 
-  it("keeps Windows P0 closed to every MIPS PE, admitted or not", () => {
+  it("admits the verified R4000 image on a Windows P0 host", () => {
     const ghidra = ghidraOn(windowsHost);
-    // The architecture rule comes first, so role and managed status never
-    // change the code and a Linux-admissible image is still refused here.
     for (const value of [
       mipsPe(),
       mipsPe({ executableRole: "shared-library" }),
-      ...refusals.map(([, refused]) => refused),
     ])
       expect(ghidra.inspectTargetSupport(value)).toMatchObject({
-        status: "unsupported",
-        code: "architecture_unsupported",
-        reason:
-          "Windows Ghidra P0 accepts x86, x86-64, ARM and ARM64 PE targets only.",
+        status: "supported",
         diagnostics: { host_platform: "win32", architecture: "mips" },
       });
   });
+
+  // Windows words the role and managed boundaries itself and reaches the lane's
+  // own machine gate last, so each refusal keeps its distinct code.
+  it.each([
+    [
+      "an unobserved COFF machine",
+      unobservedMachine(),
+      "architecture_unsupported",
+      "was not observed",
+    ],
+    [
+      "another MIPS COFF machine",
+      mipsPe({ peMachine: 0x0162 }),
+      "architecture_unsupported",
+      "machine 0x0162",
+    ],
+    [
+      "a non-executable image",
+      mipsPe({ executableRole: "non-executable" }),
+      "target_role_unsupported",
+      "Windows Ghidra P0 accepts PE applications and DLLs, not non-executable",
+    ],
+    [
+      "a managed image",
+      mipsPe({ managed: true }),
+      "managed_target_unsupported",
+      "Windows Ghidra P0 accepts native PE applications and DLLs; managed",
+    ],
+  ] as const)(
+    "keeps Windows P0 closed to %s",
+    (_label, value, code, reason) => {
+      expect(ghidraOn(windowsHost).inspectTargetSupport(value)).toMatchObject({
+        status: "unsupported",
+        code,
+        reason: expect.stringContaining(reason),
+        diagnostics: { host_platform: "win32", architecture: "mips" },
+      });
+    },
+  );
 });
 
 // A language definition modeled on the lane's own notes (a `windows` and a
