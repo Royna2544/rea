@@ -54,6 +54,40 @@ describe("managed artifact failure classification", () => {
     ).toThrow("Unsupported PE machine 0x7a35");
   });
 
+  // Managed output contracts enumerate x86, x86-64, ARM and ARM64 only.
+  it.each([
+    ["with a CLI directory", () => buildManagedPeFixture()],
+    ["without a CLI directory", () => buildNativePeFixture()],
+  ] as const)(
+    "refuses the MIPS PE machine %s as unsupported managed input",
+    (_label, build) => {
+      const bytes = build();
+      bytes.writeUInt16LE(0x0166, bytes.readUInt32LE(0x3c) + 4);
+      expect(() =>
+        inspectManagedArtifactBytes(bytes, managedPeFixtureTarget(bytes)),
+      ).toThrow("Managed inspection does not admit the MIPS PE machine 0x0166");
+    },
+  );
+
+  // ReadyToRun has no MIPS target, so no OS override decodes the MIPS machine.
+  it.each([
+    ["Apple", 0x4722],
+    ["FreeBSD", 0xaca2],
+    ["OpenBSD", 0xaca3],
+    ["Linux", 0x7a1f],
+    ["NetBSD", 0x18f5],
+    ["SunOS", 0x18f4],
+  ] as const)(
+    "rejects the %s OS-override image of the MIPS machine as an unsupported PE machine",
+    (_label, machine) => {
+      const bytes = buildManagedPeFixture({ readyToRun: true });
+      bytes.writeUInt16LE(machine, bytes.readUInt32LE(0x3c) + 4);
+      expect(() =>
+        inspectManagedArtifactBytes(bytes, managedPeFixtureTarget(bytes)),
+      ).toThrow(`Unsupported PE machine 0x${machine.toString(16)}`);
+    },
+  );
+
   it("keeps malformed reference and attribute issues across inventory callers", () => {
     const bytes = buildManagedPeFixture({
       references: [

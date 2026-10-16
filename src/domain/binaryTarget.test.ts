@@ -148,6 +148,92 @@ describe("executable header parsing", () => {
   });
 });
 
+describe("Windows CE MIPS PE headers", () => {
+  it.each([
+    ["an application", 0x0002, "application"],
+    ["a DLL", 0x2002, "shared-library"],
+    ["a non-executable image", 0, "non-executable"],
+  ] as const)(
+    "keeps the raw COFF machine of %s and carries no ELF MIPS metadata",
+    (_label, characteristics, executableRole) => {
+      expect(
+        parseExecutableHeader(pe(0x0166, 64, characteristics), "x64"),
+      ).toStrictEqual({
+        ok: true,
+        value: {
+          format: "pe",
+          peMachine: 0x0166,
+          architecture: "mips",
+          availableArchitectures: ["mips"],
+          executableRole,
+          managed: false,
+        },
+      });
+    },
+  );
+
+  it("records a CLI header on a MIPS image without deciding provider support", () => {
+    const result = parseExecutableHeader(pe(0x0166, 64, 0x2002, true), "x64");
+
+    expect(result.ok && result.value).toMatchObject({
+      format: "pe",
+      peMachine: 0x0166,
+      architecture: "mips",
+      executableRole: "shared-library",
+      managed: true,
+    });
+  });
+
+  it("rejects a PE32+ image that declares the 32-bit MIPS machine", () => {
+    const bytes = pe(0x8664);
+    bytes.writeUInt16LE(0x0166, 64 + 4);
+
+    expect(parseExecutableHeader(bytes, "x64")).toEqual({
+      ok: false,
+      error: "PE optional-header magic does not match its architecture",
+    });
+  });
+
+  it.each([
+    ["0x0160", 0x0160],
+    ["0x0162", 0x0162],
+    ["0x0168", 0x0168],
+    ["0x0169", 0x0169],
+    ["0x0266", 0x0266],
+    ["0x0366", 0x0366],
+    ["0x0466", 0x0466],
+  ] as const)(
+    "rejects the other MIPS COFF machine %s with its raw value",
+    (hex, machine) => {
+      expect(parseExecutableHeader(pe(machine), "x64")).toEqual({
+        ok: false,
+        error: `unsupported PE architecture (COFF machine ${hex})`,
+      });
+    },
+  );
+
+  it("does not decode the Linux OS-override image of the MIPS machine as managed", () => {
+    expect(
+      parseExecutableHeader(pe(0x0166 ^ 0x7b79, 64, 0x2002, true), "x64"),
+    ).toEqual({
+      ok: false,
+      error: "unsupported PE architecture (COFF machine 0x7a1f)",
+    });
+  });
+
+  it("keeps ELF MIPS identity in its ELF metadata, not a COFF machine", () => {
+    const result = parseExecutableHeader(elf(1, 1, 8), "x64");
+
+    expect(result.ok && result.value).toMatchObject({
+      format: "elf",
+      architecture: "mips",
+      availableArchitectures: ["mips"],
+      mips: { elfClass: 32, byteOrder: "little" },
+    });
+    expect(result.ok && result.value).not.toHaveProperty("peMachine");
+  });
+});
+
 describe("executable header completeness", () => {
   const reason = (bytes: Buffer, fileSize = bytes.length) => {
     const result = parseExecutableHeader(bytes, "arm64", fileSize);

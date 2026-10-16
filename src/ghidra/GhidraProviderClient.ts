@@ -18,10 +18,10 @@ import {
   ghidraPinnedLanguage,
   ghidraProfileDisabledAnalyzers,
   ghidraProfileLanguageOverride,
+  ghidraProviderPinnedLanguage,
   sameGhidraDisabledAnalyzers,
   sameGhidraLanguageOverride,
 } from "./GhidraAnalysisProfile.js";
-import { ghidraPinnedMipsLanguage } from "./GhidraMipsProfile.js";
 import type { AnalysisProfileCommitment } from "../domain/analysisProfile.js";
 import type { BinaryTarget } from "../domain/binaryTargetTypes.js";
 import {
@@ -454,14 +454,16 @@ export const createGhidraProviderClient = (input: {
   const parameterLanguage = ghidraProfileLanguageOverride(
     committedProfile.parameters,
   );
-  const pinnedLanguage = ghidraPinnedMipsLanguage(committedProfile.parameters);
+  const pinnedLanguage = ghidraProviderPinnedLanguage(
+    committedProfile.parameters,
+  );
   const targetLanguage = ghidraPinnedLanguage(target);
   if (pinnedLanguage !== undefined && targetLanguage === undefined)
     return unavailableClient(
       new ProviderAdapterError("ghidra", "open_binary", {
         diagnostics: {
           reason:
-            "The committed profile pins a MIPS language that the current target does not establish; reopen an admitted target to resolve a new profile.",
+            "The committed profile pins an import language that the current target does not establish; reopen an admitted target to resolve a new profile.",
         },
       }),
     );
@@ -476,7 +478,7 @@ export const createGhidraProviderClient = (input: {
       new ProviderAdapterError("ghidra", "open_binary", {
         diagnostics: {
           reason:
-            "The committed legacy MIPS profile pins its import language; REA_GHIDRA_LANGUAGE_ID/REA_GHIDRA_COMPILER_SPEC_ID cannot be combined with it. Reopen the target without the override.",
+            "The committed profile pins its import language; REA_GHIDRA_LANGUAGE_ID/REA_GHIDRA_COMPILER_SPEC_ID cannot be combined with it. Reopen the target without the override.",
         },
       }),
     );

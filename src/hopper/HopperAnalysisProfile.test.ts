@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 
 import { createTestTempDirectory } from "../../tests/fixtures/temporaryDirectory.js";
+import { declinedFamilyFixtures } from "../domain/declinedFamily.fixture.js";
 import {
   hopperLoaderArgsForTarget,
   resolveHopperAnalysisProfile,
@@ -89,5 +90,44 @@ it("prepares a verified thin arm64e slice for a FAT32 system container", async (
       source: "derived",
       arguments: ["-l", "Mach-O", "--aarch64"],
     },
+  });
+});
+
+it.each([
+  ["MIPS", declinedFamilyFixtures.elfMips],
+  ["RISC-V", declinedFamilyFixtures.elfRiscv],
+  ["PowerPC", declinedFamilyFixtures.elfPowerPc],
+] as const)(
+  "refuses ELF %s targets with the Ghidra profile to select instead",
+  (family, target) => {
+    const result = hopperLoaderArgsForTarget(target());
+    if (result.ok) throw new Error(`Hopper derived a ${family} loader`);
+
+    expect(result.error).toMatchObject({
+      _tag: "AnalysisCapabilityUnavailableError",
+      message: expect.stringContaining(
+        `REA's Hopper adapter does not admit ${family} targets. Select a verified Ghidra ${family} profile instead.`,
+      ),
+    });
+    expect(result.error.message).not.toContain("Linux and macOS hosts");
+  },
+);
+
+it("refuses a MIPS PE by its COFF machine and names the host-limited Ghidra lane", () => {
+  const result = hopperLoaderArgsForTarget(declinedFamilyFixtures.peMips());
+  if (result.ok) throw new Error("Hopper derived a MIPS PE loader");
+
+  expect(result.error).toMatchObject({
+    _tag: "AnalysisCapabilityUnavailableError",
+    message: expect.stringContaining(
+      "REA's Hopper adapter does not admit MIPS PE (COFF machine 0x0166) targets. Select a verified Ghidra MIPS profile instead. REA's Ghidra MIPS PE lane runs on Linux and macOS hosts only.",
+    ),
+  });
+});
+
+it("keeps the WinPE loader for an x86 PE", () => {
+  expect(hopperLoaderArgsForTarget(declinedFamilyFixtures.peX86())).toEqual({
+    ok: true,
+    value: ["-l", "WinPE", "--intel-32"],
   });
 });

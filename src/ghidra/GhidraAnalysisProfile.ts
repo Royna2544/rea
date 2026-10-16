@@ -349,6 +349,14 @@ export const ghidraProfileLanguageOverride = (
     : { languageId, compilerSpecId };
 };
 
+/** Read back only a language REA pinned for the target, never a caller's choice. */
+export const ghidraProviderPinnedLanguage = (
+  parameters: Readonly<Record<string, unknown>>,
+): GhidraLanguageOverride | undefined =>
+  parameters.language_selection === "provider-pinned-v1"
+    ? ghidraProfileLanguageOverride(parameters)
+    : undefined;
+
 /** Whether a committed profile and the active configuration select the same language. */
 export const sameGhidraLanguageOverride = (
   left: GhidraLanguageOverride | undefined,

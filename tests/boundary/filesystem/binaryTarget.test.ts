@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmod,
   mkdir,
@@ -36,9 +37,7 @@ it.each([0x01c0, 0x01c2, 0x01c4, 0xaa64])(
   async (peMachine) => {
     const directory = await createTestTempDirectory("rea-pe-machine-");
     const path = join(directory, "image.exe");
-    const bytes = pe(peMachine === 0xaa64 ? 0xaa64 : 0x01c0);
-    bytes.writeUInt16LE(peMachine, bytes.readUInt32LE(0x3c) + 4);
-    await writeFile(path, bytes);
+    await writeFile(path, pe(peMachine));
     const target = await parseBinaryTarget(path);
     expect(target).toMatchObject({
       ok: true,
@@ -638,6 +637,74 @@ describe("binary target I/O: explicit kinds and executable headers", () => {
     expect(result.ok && result.value).toMatchObject({
       format: "mach-o",
       architecture: "arm64",
+    });
+  });
+});
+
+describe("binary target I/O: Windows CE MIPS PE", () => {
+  it.each([
+    ["wince.exe", 0x0002, "application"],
+    ["wince.dll", 0x2002, "shared-library"],
+  ] as const)(
+    "resolves %s as a PE target with its raw COFF machine and leaves the file unchanged",
+    async (name, characteristics, executableRole) => {
+      const directory = await createTestTempDirectory("rea-mips-pe-target-");
+      const path = join(directory, name);
+      const bytes = pe(0x0166, 64, characteristics);
+      await writeFile(path, bytes);
+
+      const result = await parseBinaryTarget(path);
+      if (!result.ok) throw result.error;
+
+      expect(result.value).toMatchObject({
+        kind: "executable",
+        path,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        format: "pe",
+        architecture: "mips",
+        availableArchitectures: ["mips"],
+        peMachine: 0x0166,
+        executableRole,
+        managed: false,
+      });
+      expect(result.value).not.toHaveProperty("mips");
+      expect(await readFile(path)).toEqual(bytes);
+    },
+  );
+
+  it("refuses the other Windows CE MIPS machine with its raw COFF value", async () => {
+    const directory = await createTestTempDirectory("rea-mips-pe-target-");
+    const path = join(directory, "wcemipsv2.exe");
+    const bytes = pe(0x0169);
+    await writeFile(path, bytes);
+
+    const result = await parseBinaryTarget(path);
+    if (result.ok) throw new Error("unsupported MIPS PE target was admitted");
+
+    const reason = "unsupported PE architecture (COFF machine 0x0169)";
+    expect(projectAnalysisError(result.error)).toMatchObject({
+      code: "target_unavailable",
+      category: "unsupported_target",
+      details: { reason, constraint: "file_format_rejected" },
+    });
+    expect(await readFile(path)).toEqual(bytes);
+  });
+
+  it("refuses a MIPS PE whose optional header is truncated", async () => {
+    const directory = await createTestTempDirectory("rea-mips-pe-target-");
+    const path = join(directory, "truncated.exe");
+    await writeFile(path, pe(0x0166).subarray(0, 64 + 24 + 100));
+
+    const result = await parseBinaryTarget(path);
+    if (result.ok) throw new Error("truncated MIPS PE target was admitted");
+
+    expect(projectAnalysisError(result.error)).toMatchObject({
+      code: "target_unavailable",
+      category: "unsupported_target",
+      details: {
+        reason: "invalid or truncated PE header",
+        constraint: "file_format_rejected",
+      },
     });
   });
 });

@@ -93,6 +93,15 @@ class ManagedStaticClient implements AnalysisClient {
           `Managed static triage requires a PE target; observed ${this.target.format}.`,
         ),
       );
+    // The managed output contracts enumerate x86, x86-64, ARM and ARM64 only.
+    if (this.target.architecture === "mips")
+      return err(
+        new AnalysisCapabilityUnavailableError(
+          MANAGED_STATIC_PROVIDER.id,
+          operation,
+          "Managed static triage does not admit MIPS PE targets; its output contracts cover x86, x86-64, ARM and ARM64 images.",
+        ),
+      );
     try {
       if (options?.signal?.aborted === true)
         return err(new AnalysisCancelledError(operation));

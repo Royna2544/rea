@@ -387,17 +387,3 @@ export const ghidraMipsProfileParameters = (
     ...pinnedLanguage,
   };
 };
-
-/** Read the provider-pinned import language back from a resolved legacy profile. */
-export const ghidraPinnedMipsLanguage = (
-  parameters: Readonly<Record<string, unknown>>,
-): GhidraLanguageOverride | undefined => {
-  if (parameters.language_selection !== "provider-pinned-v1") return undefined;
-  const languageId = parameters.language_id;
-  const compilerSpecId = parameters.compiler_spec_id;
-  if (typeof languageId !== "string" || typeof compilerSpecId !== "string")
-    return undefined;
-  return compilerSpecId === "language-default"
-    ? { languageId }
-    : { languageId, compilerSpecId };
-};

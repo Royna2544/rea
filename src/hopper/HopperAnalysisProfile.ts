@@ -129,7 +129,7 @@ export const hopperLoaderArgsForTarget = (
         "hopper",
         "resolve_analysis_profile",
         declinedFamilyReason(
-          `REA's Hopper adapter does not admit ${declined.label} targets. Select a verified Ghidra ${declined.label} profile instead.`,
+          `REA's Hopper adapter does not admit ${declined.label} targets. Select a verified Ghidra ${declined.family} profile instead.`,
           declined,
         ),
       ),
