@@ -12,10 +12,7 @@ import {
   type BinaryTarget,
   type HeaderArchitecture,
 } from "../domain/binaryTargetTypes.js";
-import {
-  declinedFamilyDescription,
-  declinedFamilyReason,
-} from "../domain/declinedFamily.js";
+import { declinedFamilyDescription } from "../domain/declinedFamily.js";
 import {
   AnalysisCancelledError,
   AnalysisCapabilityUnavailableError,
@@ -128,10 +125,7 @@ export const hopperLoaderArgsForTarget = (
       new AnalysisCapabilityUnavailableError(
         "hopper",
         "resolve_analysis_profile",
-        declinedFamilyReason(
-          `REA's Hopper adapter does not admit ${declined.label} targets. Select a verified Ghidra ${declined.family} profile instead.`,
-          declined,
-        ),
+        `REA's Hopper adapter does not admit ${declined.label} targets. Select a verified Ghidra ${declined.family} profile instead.`,
       ),
     );
   }

@@ -22,12 +22,12 @@ Provider selection returns the specific unsupported constraint:
 
 | Declaration                                    | Outcome                                                                    |
 | ---------------------------------------------- | -------------------------------------------------------------------------- |
-| Native PE application or DLL, machine `0x0166` | admitted on Linux and macOS, `MIPS:LE:32:default` + `windows`              |
+| Native PE application or DLL, machine `0x0166` | admitted on Linux, macOS and Windows, `MIPS:LE:32:default` + `windows`     |
 | Managed (CLI directory) PE, machine `0x0166`   | refused; managed inspection refuses MIPS machines as well                  |
 | Non-executable or unclassified PE image        | refused                                                                    |
 | Machine not observed                           | refused; the family alone does not select the ISA, word size or byte order |
 | Any other MIPS COFF machine                    | refused at target resolution as an unsupported PE architecture             |
-| Windows host (Windows Ghidra P0)               | refused; P0 admits x86, x86-64, ARMNT and ARM64 PE targets only            |
+| Windows host (Windows Ghidra P0)               | admitted for the same native R4000 images; P0's other boundaries apply     |
 | IDA and Hopper                                 | decline with a PE-specific reason; neither has a verified MIPS PE lane     |
 
 Admission reads the COFF machine, characteristics and CLI directory only. The
@@ -87,8 +87,8 @@ section mappings with their source file offsets and hashes.
 
 ## Verification
 
-Run `npm run verify:ghidra:mips-pe` on a Linux or macOS host with an existing
-Ghidra 12.1.4 installation and JDK 21+. The verifier acquires no tools, needs no
+Run `npm run verify:ghidra:mips-pe` on a Linux, macOS or Windows x64 host with an
+existing Ghidra 12.1.4 installation and JDK 21+. The verifier acquires no tools, needs no
 compiler, and never executes target code:
 
 ```sh
@@ -120,7 +120,27 @@ header fields are encoded in
 
 The fixture is encoded by hand rather than produced by a Windows CE toolchain,
 so it establishes REA's handling of the header and instruction shapes it
-contains, not compatibility with real Windows CE binaries. The verifier is a
-manual lane and has no automatic CI workflow. Module and boundary tests cover
-admission, malformed headers and the refusals above with simulated providers,
-which do not establish real-provider behavior.
+contains, not compatibility with real Windows CE binaries. Module and boundary
+tests cover admission, malformed headers and the refusals above with simulated
+providers, which do not establish real-provider behavior.
+
+### Verified hosts
+
+| Host        | Status                                                                |
+| ----------- | --------------------------------------------------------------------- |
+| Linux x64   | verified with Ghidra 12.1.4 and JDK 21                                |
+| Windows x64 | verified once on a GitHub-hosted `windows-latest` runner (see below)  |
+| macOS       | not run; the lane is admitted there on the same code path, unverified |
+
+The Windows run used Ghidra 12.1.4 from a SHA-256-pinned release archive, a
+Temurin JDK 21 and the default analyzers, and passed every check above through
+the CLI and stdio MCP. It needs the matching Windows native artifact, which the
+workflow cross-builds with MinGW and the repository's own artifact check. The
+verifier cannot observe process lineage on Windows (it holds no Job Object
+lease), so it reports cleanup as `provider-owned` there; the provider's native
+owners verify their own cleanup. The Windows P0 operation battery
+(`verify:ghidra:windows`) and the ordinary-user packaged path were not run for
+this lane.
+
+The manual `real-ghidra-mips-pe-windows.yml` workflow is a complete recipe for
+that run and is only ever dispatched by hand; it is never an automatic gate.

@@ -20,10 +20,7 @@ import {
   isElfMetadataArchitecture,
   type BinaryTarget,
 } from "../domain/binaryTargetTypes.js";
-import {
-  declinedFamilyDescription,
-  declinedFamilyReason,
-} from "../domain/declinedFamily.js";
+import { declinedFamilyDescription } from "../domain/declinedFamily.js";
 import type { JsonValue } from "../domain/jsonValue.js";
 import type { Logger } from "pino";
 import { AnalysisCapabilityUnavailableError } from "../domain/analysisErrorCore.js";
@@ -138,10 +135,7 @@ export class HopperProvider implements AnalysisProviderCandidate {
       return {
         status: "unsupported",
         code: "architecture_unsupported",
-        reason: declinedFamilyReason(
-          `REA's Hopper adapter does not admit ${declined.label} targets.`,
-          declined,
-        ),
+        reason: `REA's Hopper adapter does not admit ${declined.label} targets.`,
         diagnostics,
       };
     }

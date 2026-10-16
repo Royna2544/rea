@@ -6,12 +6,10 @@ import {
 
 /** How a provider names a family whose lane belongs to Ghidra. */
 export interface DeclinedFamily {
-  /** Family name alone, for sentences that already carry the routing detail. */
+  /** Family name alone. */
   readonly family: string;
   /** Family name plus any declaration that selected the lane, such as a COFF machine. */
   readonly label: string;
-  /** Extra sentence for lanes whose Ghidra route depends on the host; null when none. */
-  readonly routing: string | null;
 }
 
 const FAMILY_LABELS: Record<ElfMetadataArchitecture, string> = {
@@ -32,21 +30,10 @@ export const declinedFamilyDescription = (
   const family = isElfMetadataArchitecture(target.architecture)
     ? FAMILY_LABELS[target.architecture]
     : target.architecture;
-  if (target.format !== "pe") return { family, label: family, routing: null };
+  if (target.format !== "pe") return { family, label: family };
   const machine =
     target.peMachine === undefined
       ? ""
       : ` (COFF machine 0x${target.peMachine.toString(16).padStart(4, "0")})`;
-  return {
-    family,
-    label: `${family} PE${machine}`,
-    routing: `REA's Ghidra ${family} PE lane runs on Linux and macOS hosts only.`,
-  };
+  return { family, label: `${family} PE${machine}` };
 };
-
-/** Join a refusal with its optional host-specific routing sentence. */
-export const declinedFamilyReason = (
-  sentence: string,
-  declined: DeclinedFamily,
-): string =>
-  declined.routing === null ? sentence : `${sentence} ${declined.routing}`;

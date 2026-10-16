@@ -109,18 +109,17 @@ it.each([
         `REA's Hopper adapter does not admit ${family} targets. Select a verified Ghidra ${family} profile instead.`,
       ),
     });
-    expect(result.error.message).not.toContain("Linux and macOS hosts");
   },
 );
 
-it("refuses a MIPS PE by its COFF machine and names the host-limited Ghidra lane", () => {
+it("refuses a MIPS PE by its COFF machine", () => {
   const result = hopperLoaderArgsForTarget(declinedFamilyFixtures.peMips());
   if (result.ok) throw new Error("Hopper derived a MIPS PE loader");
 
   expect(result.error).toMatchObject({
     _tag: "AnalysisCapabilityUnavailableError",
     message: expect.stringContaining(
-      "REA's Hopper adapter does not admit MIPS PE (COFF machine 0x0166) targets. Select a verified Ghidra MIPS profile instead. REA's Ghidra MIPS PE lane runs on Linux and macOS hosts only.",
+      "REA's Hopper adapter does not admit MIPS PE (COFF machine 0x0166) targets. Select a verified Ghidra MIPS profile instead.",
     ),
   });
 });

@@ -60,7 +60,7 @@ describe("Hopper provider family refusals", () => {
     ["RISC-V", declinedFamilyFixtures.elfRiscv, "riscv"],
     ["PowerPC", declinedFamilyFixtures.elfPowerPc, "powerpc"],
   ] as const)(
-    "declines ELF %s targets without a host routing sentence",
+    "declines ELF %s targets by family",
     (family, target, architecture) => {
       expect(hopperProvider().inspectTargetSupport(target())).toEqual({
         status: "unsupported",
@@ -75,14 +75,14 @@ describe("Hopper provider family refusals", () => {
     },
   );
 
-  it("declines a MIPS PE by its COFF machine and names the host-limited Ghidra lane", () => {
+  it("declines a MIPS PE by its COFF machine", () => {
     expect(
       hopperProvider().inspectTargetSupport(declinedFamilyFixtures.peMips()),
     ).toEqual({
       status: "unsupported",
       code: "architecture_unsupported",
       reason:
-        "REA's Hopper adapter does not admit MIPS PE (COFF machine 0x0166) targets. REA's Ghidra MIPS PE lane runs on Linux and macOS hosts only.",
+        "REA's Hopper adapter does not admit MIPS PE (COFF machine 0x0166) targets.",
       diagnostics: {
         target_kind: "executable",
         target_format: "pe",

@@ -17,7 +17,8 @@ additional permission flag or degraded mode is required.
 - Node.js 22.x (>=22.19), 24.x (>=24.11), or 26+;
 - an operator-installed Ghidra 12.1.x distribution (verified with 12.1.4);
 - a 64-bit full JDK inside that installation's declared Java range (JDK 21 or newer, with no maximum, for current 12.1 releases);
-- an explicit native, non-managed x86, x86-64, ARMNT (Thumb-2) or ARM64 PE application/DLL, or a
+- an explicit native, non-managed x86, x86-64, ARMNT (Thumb-2), ARM64 or
+  [R4000 MIPS](ghidra-mips-pe.md) PE application/DLL, or a
   [raw NMOS 6502 image](raw-binary.md#nmos-6502) with a caller-supplied entry; and
 - the 26 read-only Ghidra inventory, memory, and function-analysis operations.
 
@@ -135,17 +136,19 @@ and artifact SHA-256 before loading the package-owned addon. Native failure
 reasons remain distinct from a valid installation and an unsupported target.
 
 PE header classification and SHA-256 come from the same open file. The Windows
-provider admits native x86, x86-64, ARMNT (Thumb-2) and ARM64 PE applications and DLLs and rejects unsupported roles,
+provider admits native x86, x86-64, ARMNT (Thumb-2), ARM64 and R4000 MIPS PE applications and DLLs and rejects unsupported roles,
 architectures, managed images, and malformed headers. The original selected
 source coordinate is preserved for native admission. The original COFF machine is
 retained separately from the normalized CPU family. ARM admission requires the
 observed ARMNT machine 0x01C4; ARM64 requires 0xAA64. Legacy ARM (0x01C0), Thumb
-(0x01C2), MIPS machines such as 0x0166 (a [Linux/macOS lane](ghidra-mips-pe.md)),
-and unavailable machine facts do not select this Windows lane.
+(0x01C2), every MIPS machine other than the R4000 machine 0x0166, and unavailable
+machine facts do not select this Windows lane.
 Without a caller-selected processor override, Ghidra's PE loader
 selects the language from the PE machine field: ARM (`IMAGE_FILE_MACHINE_ARMNT`)
 imports as `ARM:LE:32:v8` (Thumb), ARM64 (`IMAGE_FILE_MACHINE_ARM64`) as
-`AARCH64:LE:64:v8A`. Explicit language/compiler selections remain caller choices
+`AARCH64:LE:64:v8A`. R4000 MIPS is the exception: REA pins `MIPS:LE:32:default`
+with the `windows` compiler specification instead of accepting the loader's
+choice (see [MIPS PE](ghidra-mips-pe.md)). Explicit language/compiler selections remain caller choices
 in the analysis profile and are recorded as explicit imports. The source
 fixture verifier compares the complete observed language ID, not just its CPU
 family prefix. ARM/ARM64 admission is a bounded extension of the x86/x64
@@ -162,6 +165,11 @@ owned cleanup. The DLL fixture also verifies the exported caller/callee
 relationship. The x86/x64 compact-reference value-flow battery does not cover
 ARM or ARM64 instructions. ARM64 EXE file-offset verification includes ambiguous
 mappings; the single-section ARM32 DLL cannot exercise that case.
+
+The R4000 MIPS lane is proven by its own verifier, not by this battery: see
+[MIPS PE verification](ghidra-mips-pe.md#verification) and the manual
+`real-ghidra-mips-pe-windows.yml` workflow, which runs it on a GitHub-hosted
+Windows x64 runner.
 
 The runs used two logical CPUs, 512 MiB Node/JVM heaps, a 900-second startup
 budget, and an explicit `REA_GHIDRA_DISABLED_ANALYZERS=WindowsResourceReference`

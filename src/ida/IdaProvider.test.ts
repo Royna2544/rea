@@ -39,25 +39,22 @@ describe("IDA provider family refusals", () => {
     ["MIPS", declinedFamilyFixtures.elfMips],
     ["RISC-V", declinedFamilyFixtures.elfRiscv],
     ["PowerPC", declinedFamilyFixtures.elfPowerPc],
-  ] as const)(
-    "declines ELF %s targets without a host routing sentence",
-    (family, target) => {
-      expect(idaProvider().inspectTargetSupport(target())).toEqual({
-        status: "unsupported",
-        code: "architecture_unsupported",
-        reason: `REA's IDA adapter has no verified ${family} lane. ${routeToGhidra}`,
-        diagnostics: { target_kind: "executable", target_format: "elf" },
-      });
-    },
-  );
+  ] as const)("declines ELF %s targets by family", (family, target) => {
+    expect(idaProvider().inspectTargetSupport(target())).toEqual({
+      status: "unsupported",
+      code: "architecture_unsupported",
+      reason: `REA's IDA adapter has no verified ${family} lane. ${routeToGhidra}`,
+      diagnostics: { target_kind: "executable", target_format: "elf" },
+    });
+  });
 
-  it("declines a MIPS PE by its COFF machine and names the host-limited Ghidra lane", () => {
+  it("declines a MIPS PE by its COFF machine", () => {
     expect(
       idaProvider().inspectTargetSupport(declinedFamilyFixtures.peMips()),
     ).toEqual({
       status: "unsupported",
       code: "architecture_unsupported",
-      reason: `REA's IDA adapter has no verified MIPS PE (COFF machine 0x0166) lane. ${routeToGhidra} REA's Ghidra MIPS PE lane runs on Linux and macOS hosts only.`,
+      reason: `REA's IDA adapter has no verified MIPS PE (COFF machine 0x0166) lane. ${routeToGhidra}`,
       diagnostics: { target_kind: "executable", target_format: "pe" },
     });
   });

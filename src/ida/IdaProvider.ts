@@ -5,10 +5,7 @@ import {
   isElfMetadataArchitecture,
   type BinaryTarget,
 } from "../domain/binaryTargetTypes.js";
-import {
-  declinedFamilyDescription,
-  declinedFamilyReason,
-} from "../domain/declinedFamily.js";
+import { declinedFamilyDescription } from "../domain/declinedFamily.js";
 import { err, ok } from "../domain/result.js";
 import { AnalysisCancelledError } from "../domain/analysisErrorCore.js";
 import type {
@@ -121,10 +118,7 @@ export class IdaProvider implements AnalysisProviderCandidate {
       return {
         status: "unsupported",
         code: "architecture_unsupported",
-        reason: declinedFamilyReason(
-          `REA's IDA adapter has no verified ${declined.label} lane. Select a supported Ghidra profile instead.`,
-          declined,
-        ),
+        reason: `REA's IDA adapter has no verified ${declined.label} lane. Select a supported Ghidra profile instead.`,
         diagnostics,
       };
     }
