@@ -1,21 +1,11 @@
 name: Real Ghidra MIPS PE Windows
 
 # Manual proof of the Windows Ghidra P0 admission of MIPS R4000 PE images on a
-# GitHub-hosted Windows x64 runner. It downloads Ghidra, so it is never an
-# automatic gate. The `push` trigger exists only so a branch can be proven before
-# the workflow reaches the default branch, where workflow_dispatch becomes usable.
+# GitHub-hosted Windows x64 runner. It downloads Ghidra, so it is only ever
+# dispatched by hand and is never an automatic gate.
 
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/cool-hopper-142bbh]
-    paths:
-      - ".github/workflows/real-ghidra-mips-pe-windows.yml"
-      - "scripts/verify-real-ghidra-mips-pe.mjs"
-      - "tests/conformance/ghidra/mips-pe-fixture.mjs"
-      - "src/ghidra/**"
-      - "src/domain/**"
-      - "src/application/**"
 
 concurrency:
   group: real-ghidra-mips-pe-windows-${{ github.ref }}
