@@ -8,7 +8,10 @@ import {
 import { parseManagedMemberEvidence } from "../../domain/managed/managedMemberComparisonMatch.js";
 import type { BinaryTarget } from "../../domain/binaryTargetTypes.js";
 import type { ArtifactResourceScope } from "../../artifacts/ArtifactResourceScope.js";
-import { AnalysisProtocolError } from "../../domain/analysisErrorCore.js";
+import {
+  AnalysisCapabilityUnavailableError,
+  AnalysisProtocolError,
+} from "../../domain/analysisErrorCore.js";
 import { EvidenceIntegrityError } from "../../domain/evidenceErrors.js";
 import { AnalysisError } from "../../domain/analysisErrorBase.js";
 import { createEvidence, type Evidence } from "../../domain/evidence.js";
@@ -20,6 +23,7 @@ import {
 import { err, ok, type Result } from "../../domain/result.js";
 import { inspectManagedMembersBytes } from "../../dotnet/ManagedMemberInspector.js";
 import { readManagedSnapshot } from "../../dotnet/ManagedSnapshot.js";
+import { managedTargetRefusal } from "../../dotnet/managedTargetAdmission.js";
 import {
   MANAGED_STATIC_PROVIDER,
   MANAGED_WORKFLOW_PROVIDER,
@@ -76,6 +80,13 @@ export const compareManagedMemberPaths = async (
       selectedPath: string,
     ) => {
       const { path } = target;
+      const refusal = managedTargetRefusal(target);
+      if (refusal !== null)
+        throw new AnalysisCapabilityUnavailableError(
+          MANAGED_STATIC_PROVIDER.id,
+          operation,
+          refusal,
+        );
       let snapshot: Awaited<ReturnType<typeof readManagedSnapshot>>;
       try {
         snapshot = await readSnapshot(

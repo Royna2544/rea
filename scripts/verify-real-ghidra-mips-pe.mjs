@@ -77,7 +77,8 @@ const targets = {};
 for (const [name, options] of Object.entries({
   exe: {},
   dll: { image: "dll" },
-  mips3: { mips3: true },
+  daddu: { daddu: true },
+  dsll: { dsll: true },
   r3000: { machine: 0x0162 },
 })) {
   const fixture = buildMipsPeFixture(options);
@@ -322,9 +323,10 @@ try {
     opened = false;
 
     // Documented limitation, verified rather than assumed: MIPS III opcodes are
-    // not modeled by the pinned 32-bit language.
-    const mips3 = targets.mips3;
-    await call("open_binary", { path: mips3.path, provider_id: "ghidra" });
+    // not faithfully modeled by the pinned 32-bit language. `daddu` decodes with
+    // 32-bit register semantics; `dsll` is not decoded and halts the decompiler.
+    const daddu = targets.daddu;
+    await call("open_binary", { path: daddu.path, provider_id: "ghidra" });
     opened = true;
     const wide = await call("read_function_instructions", {
       procedure: fixture.helper,
@@ -333,24 +335,43 @@ try {
       wide.instructions.some((text) => /\bdaddu\b/u.test(text)),
       "Expected the MIPS III daddu to be listed",
     );
-    assert.ok(
-      !wide.instructions.some((text) => /\bdsll\b/u.test(text)),
-      "A dsll delay slot was decoded; the documented MIPS III limitation changed",
-    );
     const wideDossier = functionDossierSchema.parse(
       (
         await evidenceCall(
           "analyze_function",
           { procedure: fixture.helper },
-          mips3,
+          daddu,
         )
       ).normalized_result,
     );
-    assert.match(
-      wideDossier.pseudocode,
-      /halt_unimplemented/u,
-      "The decompiler no longer reports the unmodeled MIPS III instruction",
+    assert.match(wideDossier.pseudocode, /param_1\s*\+\s*param_2/u);
+    assert.doesNotMatch(wideDossier.pseudocode, /halt_/u);
+    await call("close_binary");
+    opened = false;
+
+    const dsll = targets.dsll;
+    await call("open_binary", { path: dsll.path, provider_id: "ghidra" });
+    opened = true;
+    const narrow = await call("read_function_instructions", {
+      procedure: fixture.helper,
+    });
+    // Delay-slot instructions are listed with a `_` prefix, so match the address.
+    assert.ok(
+      !narrow.instructions.some((text) =>
+        text.startsWith(`${fixture.helper_delay_slot}:`),
+      ),
+      "The dsll delay slot was decoded; the documented MIPS III limitation changed",
     );
+    const narrowDossier = functionDossierSchema.parse(
+      (
+        await evidenceCall(
+          "analyze_function",
+          { procedure: fixture.helper },
+          dsll,
+        )
+      ).normalized_result,
+    );
+    assert.match(narrowDossier.pseudocode, /halt_(?:unimplemented|baddata)/u);
     await call("close_binary");
     opened = false;
 
@@ -396,7 +417,10 @@ try {
         delay_slot_decoded: true,
       },
       shared_library_role_verified: true,
-      mips_iii_limitation_verified: true,
+      mips_iii_limitation_verified: {
+        daddu_decodes: true,
+        dsll_halts_decompiler: true,
+      },
       original_unchanged: true,
     };
   });
@@ -439,6 +463,15 @@ try {
     conflicting.message,
     /outside the verified little-endian MIPS32 Windows PE profile\. The requested override has not been changed\./u,
   );
+  const languageOnly = await withClient(
+    { REA_GHIDRA_LANGUAGE_ID: "MIPS:LE:32:default" },
+    "rea-real-mips-pe-language-only",
+    (client) => refusedOpen(client, targets.exe.path),
+  );
+  assert.match(
+    languageOnly.message,
+    /Name the pinned compiler specification as well \(REA_GHIDRA_COMPILER_SPEC_ID=windows\)\. The requested override has not been changed\./u,
+  );
   const configured = await withClient(
     {
       REA_GHIDRA_LANGUAGE_ID: "MIPS:LE:32:default",
@@ -464,6 +497,7 @@ try {
   report.fail_closed = {
     unverified_machine_refused: "0x0162",
     conflicting_override_refused: true,
+    language_only_override_refused: true,
     equal_override_selection: configured,
   };
 } catch (error) {

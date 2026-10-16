@@ -82,7 +82,7 @@ export const ghidraMipsPeLimitations = (
 ): readonly string[] =>
   isGhidraMipsPeTarget(target)
     ? [
-        `MIPS PE: REA pins Ghidra's \`${MIPS_PE_LANGUAGE.languageId}\` language with the \`${MIPS_PE_LANGUAGE.compilerSpecId}\` compiler specification for COFF machine ${hex16(PE_MACHINE_MIPS_R4000)} (R4000). The COFF machine is a header declaration, not proof of the MIPS32 ISA level the language models. MIPS III 64-bit instructions are not modeled: on Ghidra 12.1.4 a \`daddu\` is listed without semantics, the decompiler reports an unimplemented instruction and truncates control flow there, and a \`dsll\` delay slot was not decoded.`,
+        `MIPS PE: REA pins Ghidra's \`${MIPS_PE_LANGUAGE.languageId}\` language with the \`${MIPS_PE_LANGUAGE.compilerSpecId}\` compiler specification for COFF machine ${hex16(PE_MACHINE_MIPS_R4000)} (R4000). The COFF machine is a header declaration, not proof of the MIPS32 ISA level the language models. MIPS III 64-bit instructions are not faithfully modeled by the 32-bit language: on Ghidra 12.1.4 a \`daddu\` decodes with 32-bit register semantics, while an encoding such as \`dsll\` is not decoded and the decompiler halts there.`,
         "Ghidra's `windows` and `default` compiler specifications for this language share `mips32le.cspec`; Windows calling-convention fidelity is an assumption of this lane, not a verified fact.",
         "Admission reads the COFF machine, characteristics and CLI directory only. The subsystem and operating system (for example Windows CE) are not inspected, and PE base relocations are recorded by Ghidra without being applied: the image is analyzed at its preferred base.",
       ]

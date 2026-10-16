@@ -14,9 +14,9 @@
  *           addiu sp,sp,16
  *           jr    ra
  *           nop                  ; delay slot
- *   helper: addu  v0,a0,a1       ; `daddu` (MIPS III) in the 64-bit variant
+ *   helper: addu  v0,a0,a1       ; `daddu` (MIPS III) in the `daddu` variant
  *           jr    ra
- *           sll   v0,v0,1        ; delay slot; `dsll` in the 64-bit variant
+ *           sll   v0,v0,1        ; delay slot; `dsll` (MIPS III) in the `dsll` variant
  */
 const IMAGE_BASE = 0x0001_0000;
 const TEXT_RVA = 0x1000;
@@ -36,7 +36,7 @@ const word = (value) => {
 const jal = (target) => 0x0c00_0000 | ((target >>> 2) & 0x03ff_ffff);
 
 /** Encoded instruction words in program order, with the helper at HELPER_OFFSET. */
-const codeWords = (mips3) => [
+const codeWords = ({ daddu, dsll }) => [
   0x27bd_fff0, // addiu sp,sp,-16
   0xafbf_000c, // sw ra,12(sp)
   0x2404_0003, // addiu a0,zero,3
@@ -46,19 +46,24 @@ const codeWords = (mips3) => [
   0x27bd_0010, // addiu sp,sp,16
   0x03e0_0008, // jr ra
   0x0000_0000, // nop (delay slot)
-  mips3 ? 0x0085_102d : 0x0085_1021, // daddu / addu v0,a0,a1
+  daddu ? 0x0085_102d : 0x0085_1021, // daddu / addu v0,a0,a1
   0x03e0_0008, // jr ra
-  mips3 ? 0x0002_1078 : 0x0002_1040, // dsll / sll v0,v0,1 (delay slot)
+  dsll ? 0x0002_1078 : 0x0002_1040, // dsll / sll v0,v0,1 (delay slot)
 ];
 
 /**
- * @param {{ image?: "exe" | "dll", mips3?: boolean, machine?: number }} [options]
- *   `mips3` swaps two helper instructions for 64-bit MIPS III encodings;
- *   `machine` overrides the COFF machine for negative controls.
+ * @param {{ image?: "exe" | "dll", daddu?: boolean, dsll?: boolean, machine?: number }} [options]
+ *   `daddu` and `dsll` each swap one helper instruction for a 64-bit MIPS III
+ *   encoding; `machine` overrides the COFF machine for negative controls.
  */
 export function buildMipsPeFixture(options = {}) {
   const dll = options.image === "dll";
-  const code = Buffer.concat(codeWords(options.mips3 === true).map(word));
+  const code = Buffer.concat(
+    codeWords({
+      daddu: options.daddu === true,
+      dsll: options.dsll === true,
+    }).map(word),
+  );
   const bytes = Buffer.alloc(FILE_ALIGNMENT + FILE_ALIGNMENT);
   bytes.write("MZ", 0, "latin1");
   bytes.writeUInt32LE(0x40, 0x3c); // e_lfanew; no DOS stub program
@@ -109,6 +114,7 @@ export function buildMipsPeFixture(options = {}) {
     jal: at(0x0c),
     helper: at(HELPER_OFFSET),
     helper_end: at(code.length - 1),
+    helper_delay_slot: at(HELPER_OFFSET + 8),
     entry_end: at(HELPER_OFFSET - 1),
     /** Little-endian bytes of each entry instruction, in order, as lowercase hex. */
     entry_instruction_bytes: Array.from({ length: 9 }, (_, index) =>

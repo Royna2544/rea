@@ -44,8 +44,10 @@ pair instead of accepting the loader's choice, so the committed profile, the
 session readback and any different mapping in another Ghidra release compare
 against one owner. The profile records `language_selection: provider-pinned-v1`.
 A caller-selected `REA_GHIDRA_LANGUAGE_ID` or `REA_GHIDRA_COMPILER_SPEC_ID` that
-disagrees with the pin is refused without changing the requested override; an
-override that matches the pin is accepted and recorded as `configured-v1`.
+disagrees with the pin is refused without changing the requested override. The
+pinned `windows` specification is not the language's default one, so a
+language-only selection is refused too: name both. An override that matches the
+pin is accepted and recorded as `configured-v1`.
 
 Ghidra's `windows` and `default` compiler specifications for this language both
 use `mips32le.cspec`, so Windows calling-convention fidelity is an assumption of
@@ -69,11 +71,12 @@ section mappings with their source file offsets and hashes.
 
 ## Limits
 
-- **MIPS III instructions are not modeled.** R4000 is a MIPS III core, but the
-  pinned language is 32-bit. On Ghidra 12.1.4 a `daddu` is listed without
-  semantics, the decompiler reports an unimplemented instruction and truncates
-  control flow there, and a `dsll` in a delay slot was not decoded. Code that
-  uses 64-bit instructions needs a different analysis.
+- **MIPS III instructions are not faithfully modeled.** R4000 is a MIPS III
+  core, but the pinned language is 32-bit. On Ghidra 12.1.4 a `daddu` decodes
+  with 32-bit register semantics, so its result is a 32-bit add. An encoding
+  such as `dsll` is not decoded at all, and the decompiler halts there with an
+  unimplemented-instruction or bad-instruction warning. Code that uses 64-bit
+  instructions needs a different analysis.
 - **Relocations are not applied.** Ghidra's PE loader records base relocations
   as skipped and analyzes the image at its preferred base. MIPS-specific
   relocation types are not interpreted.
@@ -106,10 +109,13 @@ header fields are encoded in
   instructions including both delay slots, their bytes and file offset, the
   direct `jal` call target, and the decompiled call;
 - CLI and MCP agreement on the function dossier;
-- the MIPS III limitation above, so that a Ghidra release that changes the
-  behavior fails the verifier instead of the documentation drifting;
-- refusal of an unverified machine (`0x0162`), refusal of a conflicting language
-  override with the requested value unchanged, acceptance of a matching one,
+- the MIPS III limitation above: a `daddu` image decompiles to a 32-bit add and
+  a `dsll` image has no instruction at the delay slot and halts the decompiler,
+  so a Ghidra release that changes either behavior fails the verifier instead
+  of the documentation drifting;
+- refusal of an unverified machine (`0x0162`), refusal of a conflicting or
+  language-only override with the requested value unchanged, acceptance of a
+  matching one,
   unchanged source bytes, and owned-process cleanup.
 
 The fixture is encoded by hand rather than produced by a Windows CE toolchain,

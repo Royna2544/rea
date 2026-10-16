@@ -10,6 +10,7 @@ import {
 import { ArtifactReaderFailure } from "../artifacts/ArtifactReader.js";
 import { ArtifactResourceScope } from "../artifacts/ArtifactResourceScope.js";
 import { managedStaticCapabilities } from "./ManagedStaticProviderMetadata.js";
+import { managedTargetRefusal } from "./managedTargetAdmission.js";
 import { MANAGED_STATIC_PROVIDER } from "../application/InvestigationProviders.js";
 import {
   MANAGED_TOOL_CONTRACTS,
@@ -93,13 +94,13 @@ class ManagedStaticClient implements AnalysisClient {
           `Managed static triage requires a PE target; observed ${this.target.format}.`,
         ),
       );
-    // The managed output contracts enumerate x86, x86-64, ARM and ARM64 only.
-    if (this.target.architecture === "mips")
+    const refusal = managedTargetRefusal(this.target);
+    if (refusal !== null)
       return err(
         new AnalysisCapabilityUnavailableError(
           MANAGED_STATIC_PROVIDER.id,
           operation,
-          "Managed static triage does not admit MIPS PE targets; its output contracts cover x86, x86-64, ARM and ARM64 images.",
+          refusal,
         ),
       );
     try {

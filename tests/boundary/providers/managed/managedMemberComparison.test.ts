@@ -23,6 +23,7 @@ import { managedPeFixtureTarget } from "../../../../src/dotnet/ManagedPe.fixture
 import {
   buildManagedNestedTypeFixture,
   buildManagedPeFixture,
+  buildNativePeFixture,
 } from "../../../../src/dotnet/ManagedPe.fixture.js";
 import {
   MAX_MANAGED_SNAPSHOT_BYTES,
@@ -775,4 +776,33 @@ describe("managed comparison target identity", () => {
     expect(result.error._tag).toBe("EvidenceIntegrityError");
     expect(result.error.message).toContain(leftPath);
   });
+});
+
+// The managed readers decline a MIPS PE; the CLI path-based comparison must say
+// so as a capability limit on either side instead of "unreadable output".
+it("refuses a MIPS PE on either side as a capability limit", async () => {
+  const directory = await createTestTempDirectory("rea-managed-mips-compare-");
+  const managedPath = join(directory, "managed.dll");
+  const mipsPath = join(directory, "mips.exe");
+  const mips = buildNativePeFixture();
+  mips.writeUInt16LE(0x0166, mips.readUInt32LE(0x3c) + 4);
+  await writeFile(managedPath, buildManagedPeFixture());
+  await writeFile(mipsPath, mips);
+  for (const [leftPath, rightPath] of [
+    [managedPath, mipsPath],
+    [mipsPath, managedPath],
+  ] as const) {
+    const result = await compareManagedMemberPaths({ leftPath, rightPath });
+    if (result.ok) throw new Error("the MIPS PE was admitted");
+    expect(projectAnalysisError(result.error)).toMatchObject({
+      code: "capability_unavailable",
+      retryable: false,
+      details: {
+        provider_id: "rea-dotnet-static",
+        operation: "compare_managed_members",
+        reason:
+          "Managed static triage does not admit MIPS PE targets; its output contracts cover x86, x86-64, ARM and ARM64 images.",
+      },
+    });
+  }
 });

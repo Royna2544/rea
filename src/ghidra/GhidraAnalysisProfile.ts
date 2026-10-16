@@ -64,6 +64,23 @@ export const ghidraPinnedLanguage = (
   ghidraRiscvLanguageOverride(target) ??
   ghidraPowerPcLanguage(target);
 
+/**
+ * Whether a caller's processor selection departs from the provider's pin. A
+ * language-only selection departs from a pin whose compiler specification is
+ * not the language's default, as the MIPS PE `windows` specification is: the
+ * import would run another specification while the profile described the pin.
+ * Other lanes pin their language's default specification, so omitting it agrees.
+ */
+const departsFromPin = (
+  override: GhidraLanguageOverride,
+  pin: GhidraLanguageOverride,
+  target: BinaryTarget,
+): boolean =>
+  override.languageId !== pin.languageId ||
+  (override.compilerSpecId === undefined
+    ? isGhidraMipsPeTarget(target)
+    : override.compilerSpecId !== pin.compilerSpecId);
+
 /** Resolve version-bound, deterministic semantics before Ghidra imports a target. */
 export const resolveGhidraAnalysisProfile = async (
   target: BinaryTarget,
@@ -180,9 +197,7 @@ export const resolveGhidraAnalysisProfile = async (
     target.architecture !== "powerpc" &&
     !callerMaySelectLegacyMipsLanguage &&
     languageOverride !== undefined &&
-    (languageOverride.languageId !== pinnedLanguage.languageId ||
-      (languageOverride.compilerSpecId !== undefined &&
-        languageOverride.compilerSpecId !== pinnedLanguage.compilerSpecId))
+    departsFromPin(languageOverride, pinnedLanguage, target)
   )
     return err(
       new AnalysisUnsupportedTargetError(
@@ -194,7 +209,13 @@ export const resolveGhidraAnalysisProfile = async (
             : isGhidraMipsPeTarget(target)
               ? "little-endian MIPS32 Windows PE"
               : "endian-matched MIPS32"
-        } profile. The requested override has not been changed.`,
+        } profile.${
+          isGhidraMipsPeTarget(target) &&
+          languageOverride.languageId === pinnedLanguage.languageId &&
+          languageOverride.compilerSpecId === undefined
+            ? ` Name the pinned compiler specification as well (REA_GHIDRA_COMPILER_SPEC_ID=${pinnedLanguage.compilerSpecId}).`
+            : ""
+        } The requested override has not been changed.`,
       ),
     );
   const selectedLanguage = languageOverride ?? pinnedLanguage;

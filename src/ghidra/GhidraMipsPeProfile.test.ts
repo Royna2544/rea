@@ -193,8 +193,13 @@ describe("Ghidra MIPS PE lane boundary", () => {
     expect(notes[0]).toContain("`MIPS:LE:32:default`");
     expect(notes[0]).toContain("`windows` compiler specification");
     expect(notes[0]).toContain("0x0166");
-    expect(notes[0]).toContain("MIPS III 64-bit instructions are not modeled");
-    expect(notes[0]).toContain("`daddu`");
+    expect(notes[0]).toContain(
+      "MIPS III 64-bit instructions are not faithfully modeled",
+    );
+    expect(notes[0]).toContain(
+      "`daddu` decodes with 32-bit register semantics",
+    );
+    expect(notes[0]).toContain("`dsll` is not decoded");
     expect(notes[1]).toContain("share `mips32le.cspec`");
     expect(notes[1]).toContain("an assumption of this lane");
     expect(notes[2]).toContain("subsystem and operating system");
@@ -411,7 +416,9 @@ describe("Ghidra MIPS PE analysis profile", () => {
     for (const key of ["pe_machine", "executable_role", "managed"])
       expect(profile.parameters).not.toHaveProperty(key);
   });
+});
 
+describe("Ghidra MIPS PE language selection", () => {
   it("keeps a configured language that equals the pin as configured", async () => {
     const installDir = await installationWithMipsLanguages();
     const provider = new GhidraProvider(
@@ -466,6 +473,47 @@ describe("Ghidra MIPS PE analysis profile", () => {
         ),
       },
     });
+  });
+
+  // The pinned `windows` specification is not the language's default one, so a
+  // language-only selection would import another specification while the
+  // profile described the pin.
+  it("refuses a language-only selection and names the pinned specification", async () => {
+    const installDir = await installationWithMipsLanguages();
+    const provider = new GhidraProvider(
+      configOf({
+        GHIDRA_INSTALL_DIR: installDir,
+        REA_GHIDRA_LANGUAGE_ID: "MIPS:LE:32:default",
+      }),
+      silentLogger,
+      {},
+      host,
+    );
+    expect(await provider.resolveAnalysisProfile(mipsPe())).toMatchObject({
+      ok: false,
+      error: {
+        _tag: "AnalysisUnsupportedTargetError",
+        reason: expect.stringContaining(
+          "Name the pinned compiler specification as well (REA_GHIDRA_COMPILER_SPEC_ID=windows). The requested override has not been changed.",
+        ),
+      },
+    });
+  });
+
+  it("keeps a language-only selection valid for lanes that pin their default specification", async () => {
+    const installDir = await installationWithMipsLanguages();
+    const provider = new GhidraProvider(
+      configOf({
+        GHIDRA_INSTALL_DIR: installDir,
+        REA_GHIDRA_LANGUAGE_ID: "MIPS:LE:32:default",
+      }),
+      silentLogger,
+      {},
+      host,
+    );
+    // The legacy ELF MIPS lane lets the caller choose, and pins `default`.
+    const result = await provider.resolveAnalysisProfile(legacyMipsElf);
+    expect(result.ok).toBe(true);
   });
 });
 
